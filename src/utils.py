@@ -56,7 +56,13 @@ def number_independent_paths(G: nx.DiGraph, sources: list, terminals: list) -> f
     """
 
     # The maximum number of edge-disjoint paths between vertices u and v equals the local edge connectivity between them
-    # (by Menger's theorem). Thefore, we used this fact to construct efficiently the number of independent paths.
+    # (by Menger's theorem). Therefore, we used this fact to construct efficiently the number of independent paths.
+    
+    # According to documentation (https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.connectivity.connectivity.local_edge_connectivity.html):
+    # If you need to compute local connectivity on several pairs of nodes in the same graph, it is recommended that
+    # you reuse the data structures that NetworkX uses in the computation: the auxiliary digraph for edge connectivity,
+    # and the residual network for the underlying maximum flow computation.
+
     H = build_auxiliary_edge_connectivity(G)
     R = build_residual_network(H, "capacity")
     k = 0
