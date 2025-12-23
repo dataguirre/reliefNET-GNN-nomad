@@ -54,6 +54,9 @@ def number_independent_paths(G: nx.DiGraph, sources: list, terminals: list) -> f
     float
         The average number of independent paths, normalized by the number of terminals.
     """
+
+    # The maximum number of edge-disjoint paths between vertices u and v equals the local edge connectivity between them
+    # (by Menger's theorem). Thefore, we used this fact to construct efficiently the number of independent paths.
     H = build_auxiliary_edge_connectivity(G)
     R = build_residual_network(H, "capacity")
     k = 0
