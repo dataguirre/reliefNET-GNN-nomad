@@ -1,10 +1,28 @@
-# reliefNET-GNN-nomad
+# ReliefNET-GNN-nomad
 
-A Graph Neural Network (GNN) implementation for relief network analysis and optimization using the NOMAD framework.
+A Graph Neural Network (GNN) implementation for identifying critical transportation links in humanitarian disaster response scenarios using real-world transportation networks.
 
 ## 📋 Overview
 
-This project implements a graph neural network approach for analyzing and optimizing relief networks. The implementation leverages modern Python tooling with `uv` for fast, reliable dependency management.
+This project extends previous research on transportation resilience by applying deep learning methods to real transportation networks for humanitarian response optimization. ReliefNET-GNN leverages graph neural networks to identify critical links in transportation infrastructure that are essential for effective disaster relief operations.
+
+### Research Background
+
+This work builds upon and extends:
+
+- **Aguirre Salamanca, D.** (2025). *Resilient routes: leveraging deep learning to identify critical transportation links for humanitarian response*. Universidad de los Andes. [Available at: https://hdl.handle.net/1992/76275](https://hdl.handle.net/1992/76275)
+
+- **Aguirre Salamanca, D., Cardozo, N., Herrera, A.** (2026). *AI for Aid: Using ReliefNET-GNN to Enhance Transportation Resilience in Disaster Response*
+
+The implementation leverages modern Python tooling with `uv` for fast, reliable dependency management and reproducibility.
+
+### Key Features
+
+- **Real-world Transportation Networks**: Analysis of actual transportation infrastructure
+- **Critical Link Identification**: Deep learning-based detection of essential routes for disaster response
+- **Humanitarian Focus**: Optimization specifically designed for relief operations and emergency scenarios
+- **Graph Neural Networks**: State-of-the-art GNN architecture for network analysis
+- **Reproducible Research**: Built with `uv` for consistent dependency management across environments
 
 ## 🚀 Quick Start
 
@@ -87,6 +105,11 @@ python scripts/script_name.py
    uv sync --all-extras
    ```
 
+2. Install pre-commit hooks (if configured):
+   ```bash
+   pre-commit install
+   ```
+
 ### Code Style
 
 This project follows Python best practices. Ensure your code:
@@ -109,11 +132,24 @@ ruff check src/ tests/
 
 ## 📊 Data
 
-Data files should be placed in the `data/` directory. The specific format and structure depend on the relief network datasets being used.
+Transportation network data files should be placed in the `data/` directory. The project works with:
+
+- Real-world road networks
+- Transportation infrastructure graphs
+- Historical disaster response routes
+- Critical link annotations
+
+Data formats may include graph representations (edge lists, adjacency matrices) and associated node/edge features relevant to humanitarian response scenarios.
 
 ## 📈 Results
 
-Experimental results, model outputs, and visualizations are stored in the `results/` directory.
+Model outputs, critical link predictions, network visualizations, and experimental results are stored in the `results/` directory. This may include:
+
+- Identified critical transportation links
+- Network resilience metrics
+- Comparative analysis with baseline methods
+- Visualization of vulnerable infrastructure
+- Performance metrics for disaster response scenarios
 
 ## 🤝 Contributing
 
@@ -125,6 +161,26 @@ Contributions are welcome! Please follow these steps:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
+## 📄 Citation
+
+If you use this work in your research, please cite:
+
+```bibtex
+@mastersthesis{aguirre2025resilient,
+  title={Resilient routes: leveraging deep learning to identify critical transportation links for humanitarian response},
+  author={Aguirre Salamanca, David},
+  year={2025},
+  school={Universidad de los Andes},
+  url={https://hdl.handle.net/1992/76275}
+}
+
+@article{aguirre2026ai,
+  title={AI for Aid: Using ReliefNET-GNN to Enhance Transportation Resilience in Disaster Response},
+  author={Aguirre Salamanca, David and Cardozo, Nicol{\'a}s and Herrera, Alberto},
+  year={2026}
+}
+```
+
 ## 📝 License
 
 This project's license information is specified in the `pyproject.toml` file.
@@ -133,13 +189,29 @@ This project's license information is specified in the `pyproject.toml` file.
 
 - [@dataguirre](https://github.com/dataguirre)
 
+## 🙏 Acknowledgments
+
+- Universidad de los Andes
+- Research collaborators: Nicolás Cardozo, Alberto Herrera
+- Transportation resilience research community
+- Humanitarian logistics and disaster response organizations
+- Graph Neural Network research community
+
 ## 📧 Contact
 
 For questions or feedback, please open an issue on the GitHub repository.
 
 ## 🔗 References
 
-Additional documentation can be found in the `docs/` directory.
+### Primary Research
+
+1. Aguirre Salamanca, D. (2025). *Resilient routes: leveraging deep learning to identify critical transportation links for humanitarian response*. Universidad de los Andes. https://hdl.handle.net/1992/76275
+
+2. Aguirre Salamanca, D., Cardozo, N., Herrera, A. (2026). *AI for Aid: Using ReliefNET-GNN to Enhance Transportation Resilience in Disaster Response*
+
+### Additional Documentation
+
+Additional technical documentation and methodology details can be found in the `docs/` directory.
 
 ---
 
