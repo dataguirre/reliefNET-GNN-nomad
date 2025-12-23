@@ -1,102 +1,120 @@
-import itertools
-
+import matplotlib.pyplot as plt
 import networkx as nx
-from networkx.algorithms.connectivity import build_auxiliary_edge_connectivity, local_edge_connectivity
-from networkx.algorithms.flow import build_residual_network
 
 
-def global_efficiency(G: nx.DiGraph, sources: list, terminals: list) -> float:
+def visualize_simple_graph(G: nx.DiGraph, sources: list, terminals: list, title="Transport Network"):
     """
-    Calculate the global efficiency between source and terminal nodes.
-
-    Global efficiency is computed as the average of the inverse shortest path
-    lengths between all source-terminal pairs.
+    Visualize a directed graph with sources and terminals highlighted.
 
     Parameters
     ----------
     G : nx.DiGraph
-        A directed graph with weighted edges.
+        The graph to visualize
     sources : list
-        List of source node identifiers.
+        List of source nodes
     terminals : list
-        List of terminal node identifiers.
-
-    Returns
-    -------
-    float
-        The global efficiency value, normalized by the number of source-terminal pairs.
+        List of terminal nodes
+    title : str
+        Title for the plot
+    pos : dict or None
+        Node positions. If None, will use hierarchical layout
     """
-    D = dict(nx.all_pairs_dijkstra_path_length(G))
-    sum_distances = 0
-    for s, t in itertools.product(sources, terminals):
-        sum_distances += 1 / D[s][t]
-    return (1 / (len(sources) * len(terminals))) * sum_distances
+    plt.figure(figsize=(10, 5))
 
+    # Use hierarchical layout if position not provided
+    # Create layers based on shortest path from sources
+    layers = {}
+    for node in G.nodes():
+        if node in sources:
+            layers[node] = 0
+        elif node in terminals:
+            # Put terminals at the end
+            layers[node] = 3
+        else:
+            # Find minimum distance from any source
+            min_dist = float("inf")
+            for source in sources:
+                try:
+                    dist = nx.shortest_path_length(G, source, node)
+                    min_dist = min(min_dist, dist)
+                except nx.NetworkXNoPath:
+                    pass
+            layers[node] = min_dist if min_dist != float("inf") else 2
 
-def number_independent_paths(G: nx.DiGraph, sources: list, terminals: list) -> float:
-    """
-    Calculate the average number of edge-independent paths between sources and terminals.
+    # Create positions based on layers
+    pos = {}
+    layer_counts = {}
+    for node, layer in layers.items():
+        if layer not in layer_counts:
+            layer_counts[layer] = 0
+        layer_counts[layer] += 1
 
-    This function computes the local edge connectivity for all source-terminal pairs
-    and returns the normalized sum.
+    layer_positions = {layer: 0 for layer in layer_counts}
 
-    Parameters
-    ----------
-    G : nx.DiGraph
-        A directed graph.
-    sources : list
-        List of source node identifiers.
-    terminals : list
-        List of terminal node identifiers.
+    for node in sorted(G.nodes(), key=lambda n: (layers[n], n)):
+        layer = layers[node]
+        total_in_layer = layer_counts[layer]
+        y_position = layer_positions[layer] - (total_in_layer - 1) / 2
+        pos[node] = (layer * 3, y_position * 2)
+        layer_positions[layer] += 1
 
-    Returns
-    -------
-    float
-        The average number of independent paths, normalized by the number of terminals.
-    """
+    # Draw nodes with different colors for sources, terminals, and others
+    node_colors = []
+    node_sizes = []
+    for node in G.nodes():
+        if node in sources:
+            node_colors.append("lightgreen")
+            node_sizes.append(1500)
+        elif node in terminals:
+            node_colors.append("lightcoral")
+            node_sizes.append(1500)
+        else:
+            node_colors.append("lightblue")
+            node_sizes.append(1200)
 
-    # The maximum number of edge-disjoint paths between vertices u and v equals the local edge connectivity between them
-    # (by Menger's theorem). Therefore, we used this fact to construct efficiently the number of independent paths.
-    
-    # According to documentation (https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.connectivity.connectivity.local_edge_connectivity.html):
-    # If you need to compute local connectivity on several pairs of nodes in the same graph, it is recommended that
-    # you reuse the data structures that NetworkX uses in the computation: the auxiliary digraph for edge connectivity,
-    # and the residual network for the underlying maximum flow computation.
+    nx.draw_networkx_nodes(
+        G, pos, node_color=node_colors, node_size=node_sizes, alpha=0.9, edgecolors="black", linewidths=2
+    )
+    nx.draw_networkx_labels(G, pos, font_size=14, font_weight="bold")
 
-    H = build_auxiliary_edge_connectivity(G)
-    R = build_residual_network(H, "capacity")
-    k = 0
-    for s, t in itertools.product(sources, terminals):
-        k += local_edge_connectivity(G, s, t, auxiliary=H, residual=R)
-    return (1 / (len(terminals))) * k
+    # Draw edges with curved connections to avoid overlap
+    for edge in G.edges():
+        nx.draw_networkx_edges(
+            G,
+            pos,
+            edgelist=[edge],
+            edge_color="gray",
+            arrows=True,
+            arrowsize=25,
+            arrowstyle="->",
+            width=2.5,
+            connectionstyle="arc3,rad=0.2",
+            alpha=0.7,
+            node_size=node_sizes,
+        )
 
+    # Draw edge labels (weight and capacity)
+    edge_labels = {}
+    for u, v, data in G.edges(data=True):
+        weight = data.get("weight", "")
+        capacity = data.get("capacity", "")
+        edge_labels[(u, v)] = f"w:{weight}, c:{capacity}"
 
-def max_flow(G: nx.DiGraph, sources: list, terminals: list) -> float:
-    """
-    Calculate the average maximum flow between source and terminal nodes.
+    # Position edge labels with offset to avoid overlap
+    nx.draw_networkx_edge_labels(
+        G, pos, edge_labels, font_size=9, bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8)
+    )
 
-    This function computes the maximum flow value for all source-terminal pairs
-    and returns the normalized average.
+    plt.title(title, fontsize=18, fontweight="bold", pad=20)
+    plt.axis("off")
 
-    Parameters
-    ----------
-    G : nx.DiGraph
-        A directed graph with edges containing a 'capacity' attribute.
-    sources : list
-        List of source node identifiers.
-    terminals : list
-        List of terminal node identifiers.
+    # Create legend
+    from matplotlib.patches import Patch
 
-    Returns
-    -------
-    float
-        The average maximum flow value, normalized by the number of source-terminal pairs.
-
-    Notes
-    -----
-    Graph edges must have a 'capacity' attribute for this function to work correctly.
-    """
-    flow_value = 0
-    for s, t in itertools.product(sources, terminals):
-        flow_value += nx.maximum_flow_value(G, s, t)  # Be aware "capacity" key must be in edge attributes
-    return (1 / (len(sources) * len(terminals))) * flow_value
+    legend_elements = [
+        Patch(facecolor="lightgreen", edgecolor="black", label="Sources"),
+        Patch(facecolor="lightcoral", edgecolor="black", label="Terminals"),
+        Patch(facecolor="lightblue", edgecolor="black", label="Intermediate nodes"),
+    ]
+    plt.legend(handles=legend_elements, loc="upper left", fontsize=12)
+    plt.tight_layout()
