@@ -8,7 +8,7 @@ import osmnx as ox
 import numpy as np
 
 from src.cluster import cluster_graph
-from src.plot_graph import plot_graphs_side_by_side
+from src.plot import plot_graphs_side_by_side
 
 def build_graph(cities: list[str])->tuple[gpd.GeoDataFrame,nx.MultiDiGraph]:
     """
