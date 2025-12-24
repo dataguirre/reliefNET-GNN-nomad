@@ -4,7 +4,7 @@ import geopandas as gpd
 import matplotlib.pyplot as plt 
 
 def plot_graph(gdf: gpd.GeoDataFrame, 
-               G: ox.graph, 
+               G: nx.DiGraph, 
                node_color=None, 
                source_target=None,
                ax = None):
@@ -38,6 +38,9 @@ def plot_graph(gdf: gpd.GeoDataFrame,
     matplotlib.axes.Axes
         The axes containing the rendered plot.
     """
+    if isinstance(G, nx.DiGraph) and not isinstance(G, nx.MultiDiGraph):
+        G = nx.MultiDiGraph(G)
+
     node_size = 6
     if node_color is None and source_target is None:
         node_color = "blue"
