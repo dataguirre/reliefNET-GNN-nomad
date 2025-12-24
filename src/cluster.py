@@ -1,7 +1,9 @@
 from sklearn.cluster import HDBSCAN
+import networkx as nx
 import numpy as np 
 
-def cluster_graph(G, min_cluster_size = 35):
+def cluster_graph(G: nx.Graph, 
+                  min_cluster_size: int = 35):
     """
     Cluster graph nodes based on their spatial coordinates (x, y) using HDBSCAN.
 

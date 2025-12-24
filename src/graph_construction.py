@@ -7,8 +7,8 @@ import networkx as nx
 import osmnx as ox
 import numpy as np
 
-from .cluster import cluster_graph
-from .plot_graph import plot_graphs_side_by_side
+from src.cluster import cluster_graph
+from src.plot_graph import plot_graphs_side_by_side
 
 def build_graph(cities: list[str])->tuple[gpd.GeoDataFrame,nx.MultiDiGraph]:
     """
@@ -220,6 +220,8 @@ def _delete_nodes_in_cluster(G:nx.Graph,
     nodes = list(G.nodes())
     for n in nodes:
         if dict_node_cluster[n] == cluster_id and n != center:
+            if n == 3337993022:
+                print('----> Aqui se elimina')
             G.remove_node(n)    
 
 # Solve multiple edges
@@ -365,24 +367,22 @@ def _unify_clusters(G: nx.MultiDiGraph,
         if c == -1: 
             continue
 
-        # Encontrar el centro del cluster
         ctc_id = _find_closest_point(points = X, centroid = hdbscan.centroids_[c])
         closest_to_centroid = list(G.nodes())[ctc_id]
 
-        # Eliminar los otros nodos delcluster
         _delete_nodes_in_cluster(G = G_new, 
                                 cluster_id = c, 
                                 dict_node_cluster = dict_node_cluster, 
                                 center = closest_to_centroid)
         
-        # Encontrar los puntos de afuera conectados con alguien dentro del cluster
         outside_points = _find_outside_points_connected_to_cluster(
             dict_node_cluster = dict_node_cluster,
             cluster_id = c,
             G = G)
         
         for n_outside in outside_points: 
-            # Camino del centro al de afuera
+            if n_outside == 3337993022:
+                print('Aquí se detecta como outside')
             shortest1 = _find_shortest_path(G = G, s = closest_to_centroid, t = n_outside)
             new_edge_info1 = _unify_path(G = G, path = shortest1)
 
@@ -437,3 +437,8 @@ def simplify_graph(G: nx.MultiDiGraph,
     
     return G_simplified
 
+# TODO BORRAR
+if __name__ == "__main__":
+    cities = ['El Carmen, Colombia']
+    gdf, G = build_graph(cities)
+    G = simplify_graph(G, gdf, plot = True)

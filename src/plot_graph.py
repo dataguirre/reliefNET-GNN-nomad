@@ -53,6 +53,7 @@ def plot_graph(gdf: gpd.GeoDataFrame,
 
     gdf.plot(ax=ax, facecolor="none", edgecolor="grey")
 
+    
     ox.plot.plot_graph(
         G,
         ax=ax,
@@ -62,7 +63,8 @@ def plot_graph(gdf: gpd.GeoDataFrame,
         node_color=node_color,
         edge_color="black",
         node_size=node_size
-    )
+        )
+        
 
     return ax
 
