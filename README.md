@@ -104,7 +104,7 @@ This project's license information is specified in the `pyproject.toml` file.
 ## 👥 Authors
 
 - [@dataguirre](https://github.com/dataguirre)
-- [@mvrobles] (https://github.com/mvrobles)
+- [@mvrobles](https://github.com/mvrobles)
 
 ## 🙏 Acknowledgments
 
