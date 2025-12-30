@@ -1,13 +1,128 @@
 import osmnx as ox
 import networkx as nx
 import geopandas as gpd
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 
-def plot_graph(gdf: gpd.GeoDataFrame, 
-               G: nx.DiGraph, 
-               node_color=None, 
-               source_target=None,
-               ax = None):
+
+def plot_simple_graph(G: nx.DiGraph, sources: list, terminals: list, title="Transport Network"):
+    """
+    Visualize a directed graph with sources and terminals highlighted.
+
+    Parameters
+    ----------
+    G : nx.DiGraph
+        The graph to visualize
+    sources : list
+        List of source nodes
+    terminals : list
+        List of terminal nodes
+    title : str
+        Title for the plot
+    pos : dict or None
+        Node positions. If None, will use hierarchical layout
+    """
+    plt.figure(figsize=(10, 5))
+
+    # Use hierarchical layout if position not provided
+    # Create layers based on shortest path from sources
+    layers = {}
+    for node in G.nodes():
+        if node in sources:
+            layers[node] = 0
+        elif node in terminals:
+            # Put terminals at the end
+            layers[node] = 3
+        else:
+            # Find minimum distance from any source
+            min_dist = float("inf")
+            for source in sources:
+                try:
+                    dist = nx.shortest_path_length(G, source, node)
+                    min_dist = min(min_dist, dist)
+                except nx.NetworkXNoPath:
+                    pass
+            layers[node] = min_dist if min_dist != float("inf") else 2
+
+    # Create positions based on layers
+    pos = {}
+    layer_counts = {}
+    for node, layer in layers.items():
+        if layer not in layer_counts:
+            layer_counts[layer] = 0
+        layer_counts[layer] += 1
+
+    layer_positions = {layer: 0 for layer in layer_counts}
+
+    for node in sorted(G.nodes(), key=lambda n: (layers[n], n)):
+        layer = layers[node]
+        total_in_layer = layer_counts[layer]
+        y_position = layer_positions[layer] - (total_in_layer - 1) / 2
+        pos[node] = (layer * 3, y_position * 2)
+        layer_positions[layer] += 1
+
+    # Draw nodes with different colors for sources, terminals, and others
+    node_colors = []
+    node_sizes = []
+    for node in G.nodes():
+        if node in sources:
+            node_colors.append("lightgreen")
+            node_sizes.append(1500)
+        elif node in terminals:
+            node_colors.append("lightcoral")
+            node_sizes.append(1500)
+        else:
+            node_colors.append("lightblue")
+            node_sizes.append(1200)
+
+    nx.draw_networkx_nodes(
+        G, pos, node_color=node_colors, node_size=node_sizes, alpha=0.9, edgecolors="black", linewidths=2
+    )
+    nx.draw_networkx_labels(G, pos, font_size=14, font_weight="bold")
+
+    # Draw edges with curved connections to avoid overlap
+    for edge in G.edges():
+        nx.draw_networkx_edges(
+            G,
+            pos,
+            edgelist=[edge],
+            edge_color="gray",
+            arrows=True,
+            arrowsize=25,
+            arrowstyle="->",
+            width=2.5,
+            connectionstyle="arc3,rad=0.2",
+            alpha=0.7,
+            node_size=node_sizes,
+        )
+
+    # Draw edge labels (weight and capacity)
+    edge_labels = {}
+    for u, v, data in G.edges(data=True):
+        weight = data.get("weight", "")
+        capacity = data.get("capacity", "")
+        edge_labels[(u, v)] = f"w:{weight}, c:{capacity}"
+
+    # Position edge labels with offset to avoid overlap
+    nx.draw_networkx_edge_labels(
+        G, pos, edge_labels, font_size=9, bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8)
+    )
+
+    plt.title(title, fontsize=18, fontweight="bold", pad=20)
+    plt.axis("off")
+
+    # Create legend
+    from matplotlib.patches import Patch
+
+    legend_elements = [
+        Patch(facecolor="lightgreen", edgecolor="black", label="Sources"),
+        Patch(facecolor="lightcoral", edgecolor="black", label="Terminals"),
+        Patch(facecolor="lightblue", edgecolor="black", label="Intermediate nodes"),
+    ]
+    plt.legend(handles=legend_elements, loc="upper left", fontsize=12)
+    plt.tight_layout()
+
+
+def plot_graph(gdf: gpd.GeoDataFrame, G: nx.DiGraph, node_color=None, source_target=None, ax=None):
     """
     Plot a street/network graph over a GeoDataFrame boundary/background.
 
@@ -46,14 +161,13 @@ def plot_graph(gdf: gpd.GeoDataFrame,
         node_color = "blue"
     elif source_target:
         node_size, node_color = _set_node_info_target_source(G, source_target)
-    
+
     if ax is None:
         _, ax = plt.subplots(figsize=(10, 10), facecolor="white")
         ax.set_facecolor("white")
 
     gdf.plot(ax=ax, facecolor="none", edgecolor="grey")
 
-    
     ox.plot.plot_graph(
         G,
         ax=ax,
@@ -62,14 +176,13 @@ def plot_graph(gdf: gpd.GeoDataFrame,
         bgcolor="white",
         node_color=node_color,
         edge_color="black",
-        node_size=node_size
-        )
-        
+        node_size=node_size,
+    )
 
     return ax
 
-def _set_node_info_target_source(G, 
-                                 source_target):
+
+def _set_node_info_target_source(G, source_target):
     """
     Build node sizes and colors highlighting source and target nodes.
 
@@ -97,7 +210,7 @@ def _set_node_info_target_source(G,
     nodes = list(G.nodes())
 
     node_colors = ["blue"] * len(nodes)
-    node_sizes  = [6] * len(nodes)
+    node_sizes = [6] * len(nodes)
 
     source, target = source_target
     source_set = set(source)
@@ -106,19 +219,22 @@ def _set_node_info_target_source(G,
     for i, n in enumerate(nodes):
         if n in source_set:
             node_colors[i] = "green"
-            node_sizes[i]  = 60
+            node_sizes[i] = 60
         elif n in target_set:
             node_colors[i] = "red"
-            node_sizes[i]  = 60
+            node_sizes[i] = 60
     return node_sizes, node_colors
 
-def plot_graphs_side_by_side(gdf: gpd.GeoDataFrame, 
-                             G_left: nx.Graph, 
-                             G_right: nx.Graph,
-                             node_color_left: list = None,
-                             node_color_right: list = None,
-                             source_target_left: list = None,
-                             source_target_right: list = None):
+
+def plot_graphs_side_by_side(
+    gdf: gpd.GeoDataFrame,
+    G_left: nx.Graph,
+    G_right: nx.Graph,
+    node_color_left: list = None,
+    node_color_right: list = None,
+    source_target_left: list = None,
+    source_target_right: list = None,
+):
     """
     Plot two graphs side-by-side over the same GeoDataFrame background.
 
@@ -150,17 +266,15 @@ def plot_graphs_side_by_side(gdf: gpd.GeoDataFrame,
     None
         This function displays the plot via `plt.show()` and does not return axes.
     """
-    _, (ax_l, ax_r) = plt.subplots(ncols = 2, figsize=(10, 10), facecolor="white")
-    
+    _, (ax_l, ax_r) = plt.subplots(ncols=2, figsize=(10, 10), facecolor="white")
+
     ax_l.set_facecolor("white")
     ax_r.set_facecolor("white")
 
     # Reuse the original function; no plotting logic duplication.
-    plot_graph(gdf, G_left, node_color=node_color_left,
-        source_target=source_target_left, ax=ax_l)
+    plot_graph(gdf, G_left, node_color=node_color_left, source_target=source_target_left, ax=ax_l)
 
-    plot_graph(gdf, G_right, node_color=node_color_right,
-        source_target=source_target_right, ax=ax_r)
+    plot_graph(gdf, G_right, node_color=node_color_right, source_target=source_target_right, ax=ax_r)
 
     plt.show()
 
@@ -210,7 +324,7 @@ def draw_flow_graph(G: nx.DiGraph, sources=None, targets=None):
             layer.sort(key=str)
             n = max(1, len(layer))
             for j, node in enumerate(layer):
-                y = 0.0 if n == 1 else 1 - 2 * (j / (n - 1))  
+                y = 0.0 if n == 1 else 1 - 2 * (j / (n - 1))
                 pos[node] = (i, y)
 
         # Sources quedan más a la izquierda y terminals a la derecha
@@ -231,22 +345,25 @@ def draw_flow_graph(G: nx.DiGraph, sources=None, targets=None):
     ax = plt.gca()
     ax.set_title("Flow graph", fontsize=14)
 
-    nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=1100,
-                           edgecolors="black", linewidths=1.2)
+    nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=1100, edgecolors="black", linewidths=1.2)
     nx.draw_networkx_labels(G, pos, font_size=11, font_weight="bold")
 
     nx.draw_networkx_edges(
-        G, pos,
-        arrows=True, arrowstyle="-|>", arrowsize=18,
+        G,
+        pos,
+        arrows=True,
+        arrowstyle="-|>",
+        arrowsize=18,
         width=2,
-        connectionstyle="arc3,rad=0.08"  # leve curvatura para evitar solapes
+        connectionstyle="arc3,rad=0.08",  # leve curvatura para evitar solapes
     )
 
     nx.draw_networkx_edge_labels(
-        G, pos,
+        G,
+        pos,
         edge_labels=edge_labels,
         font_size=10,
-        bbox=dict(boxstyle="round,pad=0.25", fc="white", ec="none", alpha=0.9)
+        bbox=dict(boxstyle="round,pad=0.25", fc="white", ec="none", alpha=0.9),
     )
 
     plt.axis("off")
