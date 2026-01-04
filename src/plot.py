@@ -3,6 +3,7 @@ import networkx as nx
 import geopandas as gpd
 import matplotlib.pyplot as plt 
 from typing import Optional
+from matplotlib.gridspec import GridSpec
 import matplotlib.pyplot as plt
 
 def plot_graph(gdf: gpd.GeoDataFrame, 
@@ -173,8 +174,13 @@ def plot_graph(gdf: gpd.GeoDataFrame, G: nx.DiGraph, node_color=None, source_tar
         _, ax = plt.subplots(figsize=(10, 10), facecolor="white")
         ax.set_facecolor("white")
 
-    gdf.plot(ax=ax, facecolor="none", edgecolor="grey")
-
+    gdf.plot(
+    ax=ax,
+    facecolor="none",
+    edgecolor="lightgrey",
+    linewidth=0.6,
+    )
+    
     ox.plot.plot_graph(
         G,
         ax=ax,
@@ -188,8 +194,8 @@ def plot_graph(gdf: gpd.GeoDataFrame, G: nx.DiGraph, node_color=None, source_tar
 
     return ax
 
-
-def _set_node_info_target_source(G, source_target):
+def _set_node_info_target_source(G: nx.Graph, 
+                                 source_target: tuple[list,list]):
     """
     Build node sizes and colors highlighting source and target nodes.
 
@@ -226,19 +232,28 @@ def _set_node_info_target_source(G, source_target):
     for i, n in enumerate(nodes):
         if n in source_set:
             node_colors[i] = "green"
-            node_sizes[i] = 60
-        elif n in target_set:
+            node_sizes[i]  = 60
+        if n in target_set:
             node_colors[i] = "red"
             node_sizes[i] = 60
     return node_sizes, node_colors
+
+def _set_graph_title(ax: plt.Axes, 
+                     title: str, 
+                     G: nx.Graph):
+    ax.set_title(
+        f"{title}\n"
+        f"Nodes: {G.number_of_nodes()}. Edges: {G.number_of_edges()}"
+    )
+
 
 def plot_graphs_side_by_side(gdf: gpd.GeoDataFrame, 
                              G_left: nx.Graph, 
                              G_right: nx.Graph,
                              node_color_left: Optional[list] = None,
                              node_color_right: Optional[list] = None,
-                             source_target_left: Optional[list] = None,
-                             source_target_right: Optional[list] = None):
+                             source_target_left: Optional[tuple[list,list]] = None,
+                             source_target_right: Optional[tuple[list,list]] = None):
     """
     Plot two graphs side-by-side over the same GeoDataFrame background.
 
@@ -270,7 +285,15 @@ def plot_graphs_side_by_side(gdf: gpd.GeoDataFrame,
     None
         This function displays the plot via `plt.show()` and does not return axes.
     """
-    _, (ax_l, ax_r) = plt.subplots(ncols=2, figsize=(10, 10), facecolor="white")
+    fig = plt.figure(figsize=(12, 8))
+    gs = GridSpec(1, 3, width_ratios=[1, 0.03, 1], wspace=0)
+
+    ax_l = fig.add_subplot(gs[0])
+    ax_sep = fig.add_subplot(gs[1])
+    ax_r = fig.add_subplot(gs[2])
+    
+    ax_sep.axis("off")
+    ax_sep.plot([0.5, 0.5], [0, 1], color="lightgray", linewidth=1.5)
 
     ax_l.set_facecolor("white")
     ax_r.set_facecolor("white")
@@ -280,7 +303,9 @@ def plot_graphs_side_by_side(gdf: gpd.GeoDataFrame,
 
     plot_graph(gdf, G_right, node_color=node_color_right, source_target=source_target_right, ax=ax_r)
 
-    ax_l.set_title(f'Original transport network with cluster groups\nNodes: {G_left.number_of_nodes()}\nEdges: {G_left.number_of_edges()}')
-    ax_r.set_title(f'Simplified network\nNodes: {G_right.number_of_nodes()}\nEdges: {G_right.number_of_edges()}')
+    _set_graph_title(ax_l, 
+                     "Original transport network with cluster groups", G_left)
+    _set_graph_title(ax_r, 
+                     "Simplified network", G_right)
 
     plt.show()
