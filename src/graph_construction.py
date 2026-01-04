@@ -163,7 +163,10 @@ def _find_shortest_path(G: nx.Graph,
     list
         Sequence of node identifiers representing the shortest path from `s` to `t`.
     """
-    return nx.shortest_path(G, source=s, target=t, weight="length")
+    try:
+        return nx.shortest_path(G, source=s, target=t, weight="length")
+    except nx.NetworkXNoPath:
+         return None
 
 def _create_missing_geometry(G: nx.Graph,
                              n1: int,
@@ -416,17 +419,19 @@ def _update_path_to_other_centroid(G: nx.MultiDiGraph,
         p_centroid = closest_to_centroids[cluster_p]
         path_pcentroid_p = _find_shortest_path(G, p_centroid, p_point)
         path_q_qcentroid = _find_shortest_path(G, q_point, q_centroid)
-        path_pcentroid_qcentroid = path_pcentroid_p[:-1] + [p_point, q_point] + path_q_qcentroid[1:]
-        new_edge_info1 = _unify_path(G = G, path = path_pcentroid_qcentroid)
+        if path_pcentroid_p is not None and path_q_qcentroid is not None:
+            path_pcentroid_qcentroid = path_pcentroid_p[:-1] + [p_point, q_point] + path_q_qcentroid[1:]
+            new_edge_info1 = _unify_path(G = G, path = path_pcentroid_qcentroid)
 
-        G_new.add_edge(p_centroid, q_centroid, **new_edge_info1)
+            G_new.add_edge(p_centroid, q_centroid, **new_edge_info1)
 
         path_qcentroid_q = _find_shortest_path(G, q_centroid, q_point)
         path_p_pcentroid = _find_shortest_path(G, p_point, p_centroid)
-        path_qcentroid_pcentroid = path_qcentroid_q[:-1] + [q_point, p_point] + path_p_pcentroid[1:]
-        new_edge_info2 = _unify_path(G = G, path = path_qcentroid_pcentroid)
+        if path_qcentroid_q is not None and path_p_pcentroid is not None:
+            path_qcentroid_pcentroid = path_qcentroid_q[:-1] + [q_point, p_point] + path_p_pcentroid[1:]
+            new_edge_info2 = _unify_path(G = G, path = path_qcentroid_pcentroid)
 
-        G_new.add_edge(q_centroid, p_centroid, **new_edge_info2)
+            G_new.add_edge(q_centroid, p_centroid, **new_edge_info2)
 
 def _unify_clusters(G: nx.MultiDiGraph, 
                     hdbscan: HDBSCAN, 
@@ -494,45 +499,50 @@ def _unify_clusters(G: nx.MultiDiGraph,
                                                                      closest_to_centroids = closest_to_centroids)
             else:
                 shortest1 = _find_shortest_path(G = G, s = closest_to_centroid, t = n_outside)
-                new_edge_info1 = _unify_path(G = G, path = shortest1)
-
-                G_new.add_edge(closest_to_centroid, n_outside, **new_edge_info1)
+                if shortest1 is not None:
+                    new_edge_info1 = _unify_path(G = G, path = shortest1)
+                    G_new.add_edge(closest_to_centroid, n_outside, **new_edge_info1)
 
                 # Camino del de afuera al del centro
                 shortest2 = _find_shortest_path(G, s = n_outside, t = closest_to_centroid)
-                new_edge_info2 = _unify_path(G = G, path = shortest2)
-
-                G_new.add_edge(n_outside, closest_to_centroid, **new_edge_info2)
-            
+                if shortest2 is not None:    
+                    new_edge_info2 = _unify_path(G = G, path = shortest2)
+                    G_new.add_edge(n_outside, closest_to_centroid, **new_edge_info2)
+                
     return G_new
 
 def simplify_graph(G: nx.MultiDiGraph, 
                    gdf: gpd.GeoDataFrame, 
                    plot:bool = False) -> nx.DiGraph:
     """
-    Build, cluster, and simplify a street network by collapsing clustered nodes.
+    Simplify a street network by clustering nodes and collapsing each cluster
+    into a representative centroid node.
 
-    Workflow:
-    1) Download the driving network for `cities` with OSMnx.
-    2) Cluster nodes 
-    3) Collapse each cluster into the node closest to its centroid and rewire
-       connections to outside nodes via shortest paths (geometry + length).
-    4) Clean the resulting graph by removing self-loops and resolving parallel edges.
-    5) Optionally plot the original and simplified graphs side-by-side.
+    The function performs the following steps:
+    1) Cluster graph nodes based on their spatial/structural features.
+    2) For each cluster, select the node closest to the cluster centroid as
+       its representative.
+    3) Rewire edges by connecting external nodes to the cluster representative,
+       preserving shortest-path geometry and edge length.
+    4) Clean the resulting graph by removing self-loops and resolving
+       parallel edges.
+    5) Optionally visualize the original and simplified graphs side by side.
 
     Parameters
     ----------
-    cities : list[str]
-        List of place strings accepted by OSMnx (e.g., ["Cali, Colombia"]).
-        These are used to geocode and download the driving network.
+    G : nx.MultiDiGraph
+        Input street network graph to be simplified.
+    gdf : geopandas.GeoDataFrame
+        GeoDataFrame used as a background layer for visualization.
     plot : bool, optional
-        If True, plot original vs simplified graphs using `plot_graphs_side_by_side`.
-        Default is False.
+        If True, plot the original and simplified graphs using
+        `plot_graphs_side_by_side`. Default is False.
 
     Returns
     -------
     nx.DiGraph
-        Simplified directed graph with unified cluster centers and cleaned edges.
+        Simplified directed graph where each cluster is represented by a
+        single node and redundant edges have been removed.
     """
     X, hdbscan, clusters, dict_node_cluster = cluster_graph(G)
     G_simplified = _unify_clusters(G, hdbscan, clusters, dict_node_cluster, X)
@@ -546,9 +556,3 @@ def simplify_graph(G: nx.MultiDiGraph,
                                  node_color_left = clusters)
     
     return G_simplified
-
-# TODO BORRAR
-if __name__ == "__main__":
-    cities = ['El Carmen, Colombia']
-    gdf, G = build_graph(cities)
-    G = simplify_graph(G, gdf, plot = True)
