@@ -271,6 +271,26 @@ def _set_node_info_target_source(G: nx.Graph,
 def _set_graph_title(ax: plt.Axes, 
                      title: str, 
                      G: nx.Graph):
+    """
+    Set a two-line title on a Matplotlib Axes with graph metadata.
+
+    The first line displays a descriptive title. The second line reports
+    basic graph statistics, including the number of nodes and edges.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Axes on which the title will be set.
+    title : str
+        Main title describing the graph.
+    G : networkx.Graph
+        Graph whose size statistics (nodes and edges) are displayed.
+
+    Returns
+    -------
+    None
+        This function modifies the Axes in place.
+    """
     ax.set_title(
         f"{title}" "\n"
         f"Nodes: {G.number_of_nodes()} - Edges: {G.number_of_edges()}"
