@@ -1,8 +1,37 @@
 import osmnx as ox
 import networkx as nx
 import geopandas as gpd
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt 
+from typing import Optional
+from matplotlib.gridspec import GridSpec
+from matplotlib.patches import Patch
 
+
+def categorical_palette(n: int, cmap_name: str = "hsv"):
+    """
+    Generate a categorical color palette with `n` visually distinct colors.
+
+    The palette is created by uniformly sampling a continuous Matplotlib
+    colormap. This approach is useful when the number of categories is large
+    (e.g., >20), where standard categorical colormaps such as ``tab10`` or
+    ``tab20`` are insufficient.
+
+    Parameters
+    ----------
+    n : int
+        Number of distinct colors to generate.
+    cmap_name : str, optional
+        Name of the Matplotlib colormap to sample from. Common choices include
+        ``"hsv"``, ``"nipy_spectral"``, or ``"turbo"``. Default is ``"hsv"``.
+
+    Returns
+    -------
+    list of tuple
+        List of RGBA color tuples, each with values in the range [0, 1],
+        suitable for use in Matplotlib plotting functions.
+    """
+    cmap = plt.get_cmap(cmap_name)
+    return [cmap(i / n) for i in range(n)]
 
 def plot_simple_graph(G: nx.DiGraph, sources: list, terminals: list, title="Transport Network"):
     """
@@ -121,8 +150,11 @@ def plot_simple_graph(G: nx.DiGraph, sources: list, terminals: list, title="Tran
     plt.legend(handles=legend_elements, loc="upper left", fontsize=12)
     plt.tight_layout()
 
-
-def plot_graph(gdf: gpd.GeoDataFrame, G: nx.DiGraph, node_color=None, source_target=None, ax=None):
+def plot_graph(gdf: gpd.GeoDataFrame, 
+               G: nx.DiGraph, 
+               node_color: Optional[str | list[str]]=None, 
+               source_target: Optional[tuple[list,list]]=None,
+               ax: Optional[plt.Axes] = None):    
     """
     Plot a street/network graph over a GeoDataFrame boundary/background.
 
@@ -159,14 +191,20 @@ def plot_graph(gdf: gpd.GeoDataFrame, G: nx.DiGraph, node_color=None, source_tar
     node_size = 6
     if node_color is None and source_target is None:
         node_color = "blue"
-    elif source_target:
+    elif source_target is not None:
         node_size, node_color = _set_node_info_target_source(G, source_target)
+
 
     if ax is None:
         _, ax = plt.subplots(figsize=(10, 10), facecolor="white")
         ax.set_facecolor("white")
 
-    gdf.plot(ax=ax, facecolor="none", edgecolor="grey")
+    gdf.plot(
+    ax=ax,
+    facecolor="none",
+    edgecolor="lightgrey",
+    linewidth=0.6,
+    )
 
     ox.plot.plot_graph(
         G,
@@ -177,12 +215,14 @@ def plot_graph(gdf: gpd.GeoDataFrame, G: nx.DiGraph, node_color=None, source_tar
         node_color=node_color,
         edge_color="black",
         node_size=node_size,
-    )
+        edge_linewidth=0.5,
+        )
+        
 
     return ax
 
-
-def _set_node_info_target_source(G, source_target):
+def _set_node_info_target_source(G: nx.Graph, 
+                                 source_target: tuple[list,list]):
     """
     Build node sizes and colors highlighting source and target nodes.
 
@@ -219,22 +259,48 @@ def _set_node_info_target_source(G, source_target):
     for i, n in enumerate(nodes):
         if n in source_set:
             node_colors[i] = "green"
-            node_sizes[i] = 60
-        elif n in target_set:
+            node_sizes[i]  = 60
+        if n in target_set:
             node_colors[i] = "red"
             node_sizes[i] = 60
     return node_sizes, node_colors
 
+def _set_graph_title(ax: plt.Axes, 
+                     title: str, 
+                     G: nx.Graph):
+    """
+    Set a two-line title on a Matplotlib Axes with graph metadata.
 
-def plot_graphs_side_by_side(
-    gdf: gpd.GeoDataFrame,
-    G_left: nx.Graph,
-    G_right: nx.Graph,
-    node_color_left: list = None,
-    node_color_right: list = None,
-    source_target_left: list = None,
-    source_target_right: list = None,
-):
+    The first line displays a descriptive title. The second line reports
+    basic graph statistics, including the number of nodes and edges.
+
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Axes on which the title will be set.
+    title : str
+        Main title describing the graph.
+    G : networkx.Graph
+        Graph whose size statistics (nodes and edges) are displayed.
+
+    Returns
+    -------
+    None
+        This function modifies the Axes in place.
+    """
+    ax.set_title(
+        f"{title}" "\n"
+        f"Nodes: {G.number_of_nodes()} - Edges: {G.number_of_edges()}"
+    )
+
+
+def plot_graphs_side_by_side(gdf: gpd.GeoDataFrame, 
+                             G_left: nx.Graph, 
+                             G_right: nx.Graph,
+                             node_color_left: Optional[list] = None,
+                             node_color_right: Optional[list] = None,
+                             source_target_left: Optional[tuple[list,list]] = None,
+                             source_target_right: Optional[tuple[list,list]] = None):
     """
     Plot two graphs side-by-side over the same GeoDataFrame background.
 
@@ -266,106 +332,147 @@ def plot_graphs_side_by_side(
     None
         This function displays the plot via `plt.show()` and does not return axes.
     """
-    _, (ax_l, ax_r) = plt.subplots(ncols=2, figsize=(10, 10), facecolor="white")
+    fig = plt.figure(figsize=(12, 8))
+    gs = GridSpec(1, 3, width_ratios=[1, 0.03, 1], wspace=0)
+
+    ax_l = fig.add_subplot(gs[0])
+    ax_sep = fig.add_subplot(gs[1])
+    ax_r = fig.add_subplot(gs[2])
+    
+    ax_sep.axis("off")
+    ax_sep.plot([0.5, 0.5], [0, 1], color="lightgray", linewidth=1.5)
 
     ax_l.set_facecolor("white")
     ax_r.set_facecolor("white")
 
-    # Reuse the original function; no plotting logic duplication.
-    plot_graph(gdf, G_left, node_color=node_color_left, source_target=source_target_left, ax=ax_l)
+    plot_graph(gdf, G_left, node_color=node_color_left,
+        source_target=source_target_left, ax=ax_l)
 
     plot_graph(gdf, G_right, node_color=node_color_right, source_target=source_target_right, ax=ax_r)
+
+    _set_graph_title(ax_l, 
+                     "Original transport network with cluster groups", G_left)
+    _set_graph_title(ax_r, 
+                     "Simplified network", G_right)
 
     plt.show()
 
 
-def draw_flow_graph(G: nx.DiGraph, sources=None, targets=None):
+def visualize_flow_network(G: nx.DiGraph, 
+                           sources: list, 
+                           terminals: list, 
+                           title="Transport Network"):
     """
-    Draw a directed flow graph with optional source/target highlighting.
-
-    The function attempts to compute a layered layout using topological
-    generations (useful for DAGs). If the graph is not a DAG (i.e., contains
-    cycles), it falls back to a spring layout. Sources are positioned further
-    left and targets further right when a layered layout is used.
-
-    Nodes are colored:
-    - green for `sources`
-    - red for `targets`
-    - blue for all others
-
-    Edge labels display the `capacity` attribute when present.
+    Visualize a directed graph with sources and terminals highlighted.
 
     Parameters
     ----------
     G : nx.DiGraph
-        Directed graph representing the flow network. Edge attributes may include
-        `capacity` for labeling.
-    sources : list-like, optional
-        Iterable of source node identifiers to highlight in green.
-    targets : list-like, optional
-        Iterable of target (terminal) node identifiers to highlight in red.
-
-    Returns
-    -------
-    None
-        This function displays the plot via `plt.show()` and does not return a value.
+        The graph to visualize
+    sources : list
+        List of source nodes
+    terminals : list
+        List of terminal nodes
+    title : str
+        Title for the plot
+    pos : dict or None
+        Node positions. If None, will use hierarchical layout
     """
-    sources = set(sources or [])
-    terminals = set(targets or [])
-
-    try:
-        layers = list(nx.topological_generations(G))
-    except nx.NetworkXUnfeasible:
-        pos = nx.spring_layout(G, seed=7)
-    else:
-        pos = {}
-        for i, layer in enumerate(layers):
-            layer = list(layer)
-            layer.sort(key=str)
-            n = max(1, len(layer))
-            for j, node in enumerate(layer):
-                y = 0.0 if n == 1 else 1 - 2 * (j / (n - 1))
-                pos[node] = (i, y)
-
-        # Sources quedan más a la izquierda y terminals a la derecha
-        min_x = min(x for x, y in pos.values())
-        max_x = max(x for x, y in pos.values())
-        for node in pos:
-            x, y = pos[node]
-            if node in sources:
-                x = min_x - 0.6
-            elif node in terminals:
-                x = max_x + 0.6
-            pos[node] = (x, y)
-
-    _, node_colors = _set_node_info_target_source(G, (sources, targets))
-    edge_labels = {(u, v): d.get("capacity", "") for u, v, d in G.edges(data=True)}
-
     plt.figure(figsize=(10, 5))
-    ax = plt.gca()
-    ax.set_title("Flow graph", fontsize=14)
 
-    nx.draw_networkx_nodes(G, pos, node_color=node_colors, node_size=1100, edgecolors="black", linewidths=1.2)
-    nx.draw_networkx_labels(G, pos, font_size=11, font_weight="bold")
+    # Use hierarchical layout if position not provided
+    # Create layers based on shortest path from sources
+    layers = {}
+    for node in G.nodes():
+        if node in sources:
+            layers[node] = 0
+        elif node in terminals:
+            # Put terminals at the end
+            layers[node] = 3
+        else:
+            # Find minimum distance from any source
+            min_dist = float("inf")
+            for source in sources:
+                try:
+                    dist = nx.shortest_path_length(G, source, node)
+                    min_dist = min(min_dist, dist)
+                except nx.NetworkXNoPath:
+                    pass
+            layers[node] = min_dist if min_dist != float("inf") else 2
 
-    nx.draw_networkx_edges(
-        G,
-        pos,
-        arrows=True,
-        arrowstyle="-|>",
-        arrowsize=18,
-        width=2,
-        connectionstyle="arc3,rad=0.08",  # leve curvatura para evitar solapes
+    # Create positions based on layers
+    pos = {}
+    layer_counts = {}
+    for node, layer in layers.items():
+        if layer not in layer_counts:
+            layer_counts[layer] = 0
+        layer_counts[layer] += 1
+
+    layer_positions = {layer: 0 for layer in layer_counts}
+
+    for node in sorted(G.nodes(), key=lambda n: (layers[n], n)):
+        layer = layers[node]
+        total_in_layer = layer_counts[layer]
+        y_position = layer_positions[layer] - (total_in_layer - 1) / 2
+        pos[node] = (layer * 3, y_position * 2)
+        layer_positions[layer] += 1
+
+    # Draw nodes with different colors for sources, terminals, and others
+    node_colors = []
+    node_sizes = []
+    for node in G.nodes():
+        if node in sources:
+            node_colors.append("lightgreen")
+            node_sizes.append(1500)
+        elif node in terminals:
+            node_colors.append("lightcoral")
+            node_sizes.append(1500)
+        else:
+            node_colors.append("lightblue")
+            node_sizes.append(1200)
+
+    nx.draw_networkx_nodes(
+        G, pos, node_color=node_colors, node_size=node_sizes, alpha=0.9, edgecolors="black", linewidths=2
     )
+    nx.draw_networkx_labels(G, pos, font_size=14, font_weight="bold")
 
+    # Draw edges with curved connections to avoid overlap
+    for edge in G.edges():
+        nx.draw_networkx_edges(
+            G,
+            pos,
+            edgelist=[edge],
+            edge_color="gray",
+            arrows=True,
+            arrowsize=25,
+            arrowstyle="->",
+            width=2.5,
+            connectionstyle="arc3,rad=0.2",
+            alpha=0.7,
+            node_size=node_sizes,
+        )
+
+    # Draw edge labels (weight and capacity)
+    edge_labels = {}
+    for u, v, data in G.edges(data=True):
+        weight = data.get("weight", "")
+        capacity = data.get("capacity", "")
+        edge_labels[(u, v)] = f"w:{weight}, c:{capacity}"
+
+    # Position edge labels with offset to avoid overlap
     nx.draw_networkx_edge_labels(
-        G,
-        pos,
-        edge_labels=edge_labels,
-        font_size=10,
-        bbox=dict(boxstyle="round,pad=0.25", fc="white", ec="none", alpha=0.9),
+        G, pos, edge_labels, font_size=9, bbox=dict(boxstyle="round,pad=0.3", facecolor="white", alpha=0.8)
     )
 
+    plt.title(title, fontsize=18, fontweight="bold", pad=20)
     plt.axis("off")
+
+    # Create legend
+
+    legend_elements = [
+        Patch(facecolor="lightgreen", edgecolor="black", label="Sources"),
+        Patch(facecolor="lightcoral", edgecolor="black", label="Terminals"),
+        Patch(facecolor="lightblue", edgecolor="black", label="Intermediate nodes"),
+    ]
+    plt.legend(handles=legend_elements, loc="upper left", fontsize=12)
     plt.tight_layout()
-    plt.show()
