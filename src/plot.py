@@ -33,12 +33,6 @@ def categorical_palette(n: int, cmap_name: str = "hsv"):
     cmap = plt.get_cmap(cmap_name)
     return [cmap(i / n) for i in range(n)]
 
-def plot_graph(gdf: gpd.GeoDataFrame, 
-               G: nx.DiGraph, 
-               node_color: Optional[str | list[str]]=None, 
-               source_target: Optional[tuple[list,list]]=None,
-               ax: Optional[plt.Axes] = None):
-
 def plot_simple_graph(G: nx.DiGraph, sources: list, terminals: list, title="Transport Network"):
     """
     Visualize a directed graph with sources and terminals highlighted.
@@ -156,8 +150,11 @@ def plot_simple_graph(G: nx.DiGraph, sources: list, terminals: list, title="Tran
     plt.legend(handles=legend_elements, loc="upper left", fontsize=12)
     plt.tight_layout()
 
-
-def plot_graph(gdf: gpd.GeoDataFrame, G: nx.DiGraph, node_color=None, source_target=None, ax=None):
+def plot_graph(gdf: gpd.GeoDataFrame, 
+               G: nx.DiGraph, 
+               node_color: Optional[str | list[str]]=None, 
+               source_target: Optional[tuple[list,list]]=None,
+               ax: Optional[plt.Axes] = None):    
     """
     Plot a street/network graph over a GeoDataFrame boundary/background.
 
