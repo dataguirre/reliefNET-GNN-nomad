@@ -2,10 +2,10 @@ import osmnx as ox
 import networkx as nx
 import geopandas as gpd
 import matplotlib.pyplot as plt 
-from typing import Optional
+from matplotlib.lines import Line2D
 from matplotlib.gridspec import GridSpec
 from matplotlib.patches import Patch
-
+from typing import Optional
 
 def categorical_palette(n: int, cmap_name: str = "hsv"):
     """
@@ -154,7 +154,8 @@ def plot_graph(gdf: gpd.GeoDataFrame,
                G: nx.DiGraph, 
                node_color: Optional[str | list[str]]=None, 
                source_target: Optional[tuple[list,list]]=None,
-               ax: Optional[plt.Axes] = None):    
+               ax: Optional[plt.Axes] = None,
+               title: Optional[str] = None):    
     """
     Plot a street/network graph over a GeoDataFrame boundary/background.
 
@@ -194,16 +195,15 @@ def plot_graph(gdf: gpd.GeoDataFrame,
     elif source_target is not None:
         node_size, node_color = _set_node_info_target_source(G, source_target)
 
-
     if ax is None:
         _, ax = plt.subplots(figsize=(10, 10), facecolor="white")
         ax.set_facecolor("white")
 
     gdf.plot(
-    ax=ax,
-    facecolor="none",
-    edgecolor="lightgrey",
-    linewidth=0.6,
+        ax=ax,
+        facecolor="none",
+        edgecolor="lightgrey",
+        linewidth=0.6,
     )
 
     ox.plot.plot_graph(
@@ -218,7 +218,35 @@ def plot_graph(gdf: gpd.GeoDataFrame,
         edge_linewidth=0.5,
         )
         
+    if title is not None:
+        ax.set_title(title)
+    
+    if source_target is not None:
+        legend_elements = [
+            Line2D(
+                [0], [0],
+                marker='o',
+                color='w',
+                label='Source nodes',
+                markerfacecolor='green',
+                markersize=8
+            ),
+            Line2D(
+                [0], [0],
+                marker='o',
+                color='w',
+                label='Target nodes',
+                markerfacecolor='red',
+                markersize=8
+            ),
+        ]
 
+        ax.legend(
+            handles=legend_elements,
+            loc='upper right',
+            frameon=True
+        )
+    
     return ax
 
 def _set_node_info_target_source(G: nx.Graph, 
