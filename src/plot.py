@@ -153,7 +153,7 @@ def plot_simple_graph(G: nx.DiGraph, sources: list, terminals: list, title="Tran
 def plot_graph(gdf: gpd.GeoDataFrame, 
                G: nx.DiGraph, 
                node_color: Optional[str | list[str]]=None, 
-               source_target: Optional[tuple[list,list]]=None,
+               source_target: bool=False,
                ax: Optional[plt.Axes] = None,
                title: Optional[str] = None):    
     """
@@ -175,9 +175,9 @@ def plot_graph(gdf: gpd.GeoDataFrame,
         Node color(s) passed to `ox.plot.plot_graph`. If `source_target` is
         provided, this is overridden by the source/target coloring scheme.
         Default is "blue" when both `node_color` and `source_target` are None.
-    source_target : tuple, optional
-        Tuple of the form `(sources, targets)` where each element is an iterable
-        of node identifiers. Source nodes are colored green and target nodes red.
+    source_target : bool
+        If True, nodes in the graph must contain information on `profile` with values
+        `source`, `target` or `regular`.
     ax : matplotlib.axes.Axes, optional
         Existing axes to draw on. If None, a new figure and axes are created.
 
@@ -192,31 +192,20 @@ def plot_graph(gdf: gpd.GeoDataFrame,
     node_size = 6
     if node_color is None and source_target is None:
         node_color = "blue"
-    elif source_target is not None:
-        node_size, node_color = _set_node_info_target_source(G, source_target)
+    elif source_target:
+        node_size, node_color = _set_node_info_target_source(G)
 
     if ax is None:
         _, ax = plt.subplots(figsize=(10, 10), facecolor="white")
         ax.set_facecolor("white")
 
-    gdf.plot(
-        ax=ax,
-        facecolor="none",
-        edgecolor="lightgrey",
-        linewidth=0.6,
-    )
+    gdf.plot(ax=ax, facecolor="none",
+        edgecolor="lightgrey", linewidth=0.6)
 
-    ox.plot.plot_graph(
-        G,
-        ax=ax,
-        show=False,
-        close=False,
-        bgcolor="white",
-        node_color=node_color,
-        edge_color="black",
-        node_size=node_size,
-        edge_linewidth=0.5,
-        )
+    ox.plot.plot_graph(G,
+        ax=ax, show=False, close=False,
+        bgcolor="white", node_color=node_color, edge_color="black",
+        node_size=node_size, edge_linewidth=0.5)
         
     if title is not None:
         ax.set_title(title)
@@ -225,19 +214,15 @@ def plot_graph(gdf: gpd.GeoDataFrame,
         legend_elements = [
             Line2D(
                 [0], [0],
-                marker='o',
-                color='w',
+                marker='o', color='w',
                 label='Source nodes',
-                markerfacecolor='green',
-                markersize=8
+                markerfacecolor='green', markersize=8
             ),
             Line2D(
                 [0], [0],
-                marker='o',
-                color='w',
+                marker='o', color='w',
                 label='Target nodes',
-                markerfacecolor='red',
-                markersize=8
+                markerfacecolor='red',markersize=8
             ),
         ]
 
@@ -249,46 +234,42 @@ def plot_graph(gdf: gpd.GeoDataFrame,
     
     return ax
 
-def _set_node_info_target_source(G: nx.Graph, 
-                                 source_target: tuple[list,list]):
+def _set_node_info_target_source(G: nx.Graph) -> tuple[list, list]:
     """
-    Build node sizes and colors highlighting source and target nodes.
+    Generate node sizes and colors based on node profile attributes.
 
-    Nodes are assigned default color "blue" and size 6. Nodes present in the
-    `sources` iterable are colored "green" and enlarged; nodes present in the
-    `targets` iterable are colored "red" and enlarged.
+    Each node is styled according to its ``'profile'`` attribute:
+    - ``'source'`` nodes are colored green and enlarged.
+    - ``'target'`` nodes are colored red and enlarged.
+    - all other nodes are colored blue with a default size.
+
+    The function assumes that the graph nodes already contain a
+    ``'profile'`` attribute (e.g., set by    :func:`get_sources_targets`).
 
     Parameters
     ----------
     G : networkx.Graph
-        Graph whose nodes will be styled.
-    source_target : tuple
-        Tuple `(sources, targets)` where `sources` and `targets` are iterables
-        of node identifiers.
+        Graph whose node styling information will be generated.
+        Nodes must include a ``'profile'`` attribute.
 
     Returns
     -------
-    tuple
-        A tuple `(node_sizes, node_colors)` where:
-        - node_sizes : list of int
-            Size per node in the order of `list(G.nodes())`.
-        - node_colors : list of str
-            Color per node in the order of `list(G.nodes())`.
+    tuple[list[int], list[str]]
+        A tuple ``(node_sizes, node_colors)`` where:
+        - ``node_sizes`` is a list of node sizes in the order of
+           number of nodes in the Graph.
+        - ``node_colors`` is a list of node colors in the same order.
     """
-    nodes = list(G.nodes())
+    n_nodes = G.number_of_nodes()
 
-    node_colors = ["blue"] * len(nodes)
-    node_sizes = [6] * len(nodes)
+    node_colors = ["blue"] * n_nodes
+    node_sizes = [6] * n_nodes
 
-    source, target = source_target
-    source_set = set(source)
-    target_set = set(target)
-
-    for i, n in enumerate(nodes):
-        if n in source_set:
+    for i, (_, data) in enumerate(G.nodes(data=True)):
+        if data['profile'] == 'source':
             node_colors[i] = "green"
             node_sizes[i]  = 60
-        if n in target_set:
+        elif data['profile'] == 'target':
             node_colors[i] = "red"
             node_sizes[i] = 60
     return node_sizes, node_colors
