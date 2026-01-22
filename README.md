@@ -9,10 +9,10 @@ This project extends previous research on transportation resilience by applying 
 ### Research Background
 
 This work builds upon and extends:
+- **Aguirre, D., Cardozo, N., & Herrera, A.** (2026). *AI for Aid: Using ReliefNET-GNN to Enhance Transportation Resilience in Disaster Response*. Proceedings of the 59th Hawaii International Conference on System Sciences, 2258-2267. Available at: [https://hdl.handle.net/10125/111667](https://hdl.handle.net/10125/111667)
 
-- **Aguirre Salamanca, D.** (2025). *Resilient routes: leveraging deep learning to identify critical transportation links for humanitarian response*. Universidad de los Andes. [Available at: https://hdl.handle.net/1992/76275](https://hdl.handle.net/1992/76275)
+- **Aguirre Salamanca, D.** (2025). *Resilient routes: leveraging deep learning to identify critical transportation links for humanitarian response*. Universidad de los Andes. Available at: [https://hdl.handle.net/1992/76275](https://hdl.handle.net/1992/76275)
 
-- **Aguirre Salamanca, D., Cardozo, N., Herrera, A.** (2026). *AI for Aid: Using ReliefNET-GNN to Enhance Transportation Resilience in Disaster Response*
 
 The implementation leverages modern Python tooling with `uv` for fast, reliable dependency management and reproducibility.
 
