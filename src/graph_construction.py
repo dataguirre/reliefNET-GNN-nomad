@@ -289,7 +289,7 @@ def _solve_multiple_edges_graph(G: nx.MultiDiGraph) -> None:
         for k in keys[1:]:
             _solve_edge(G, u, v, k)
 
-def _split_geometry_at_centroid(geometry): 
+def _split_geometry_at_centroid(geometry: LineString): 
     """
     Split a LineString geometry at the point on the line that corresponds to its centroid projection.
 
