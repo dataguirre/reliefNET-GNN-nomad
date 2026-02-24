@@ -1,6 +1,6 @@
 from scipy.spatial.distance import cdist
 from sklearn.cluster import HDBSCAN
-from shapely.geometry import LineString
+from shapely.geometry import LineString, Point
 from shapely.ops import linemerge
 import geopandas as gpd
 import networkx as nx
@@ -289,6 +289,66 @@ def _solve_multiple_edges_graph(G: nx.MultiDiGraph) -> None:
         for k in keys[1:]:
             _solve_edge(G, u, v, k)
 
+def _split_geometry_at_centroid(geometry: LineString): 
+    """
+    Split a LineString geometry at the point on the line that corresponds to its centroid projection.
+
+    This function computes the centroid of the input geometry (which may lie off the line),
+    projects that centroid onto the line (via `geometry.project`), interpolates the point
+    on the line (via `geometry.interpolate`), and then splits the original LineString into
+    two LineStrings at that interpolated point.
+
+    The split is performed by iterating over the coordinate segments and inserting the
+    interpolated split point in the appropriate segment.
+
+    Parameters
+    ----------
+    geometry : shapely.geometry.LineString
+        Input line geometry to be split. It must have at least two coordinate points.
+
+    Returns
+    -------
+    geometry_start_to_centroid : shapely.geometry.LineString
+        Sub-geometry from the first coordinate of `geometry` up to the split point
+        (inclusive). Its last coordinate equals the split point.
+    geometry_centroid_to_end : shapely.geometry.LineString
+        Sub-geometry from the split point (inclusive) to the last coordinate of `geometry`.
+        Its first coordinate equals the split point.
+    point_on_line : shapely.geometry.Point
+        Interpolated point on the line where the split occurred (projection of the centroid).
+    """
+    centroid = geometry.centroid 
+    distance_along_line = geometry.project(centroid) 
+    point_on_line = geometry.interpolate(distance_along_line) 
+    coords = list(geometry.coords) 
+    new_coords_start = [coords[0]] 
+    new_coords_end = [] 
+    cumulative_distance = 0 
+    found_split = False 
+    
+    for i in range(len(coords) - 1): 
+        p1 = Point(coords[i]) 
+        p2 = Point(coords[i + 1]) 
+        segment_length = p1.distance(p2) 
+
+        if not found_split and cumulative_distance + segment_length >= distance_along_line: 
+            new_coords_start.append((point_on_line.x, point_on_line.y)) 
+            new_coords_end.append((point_on_line.x, point_on_line.y)) 
+            new_coords_end.append(coords[i + 1]) 
+            found_split = True 
+        elif not found_split: 
+            new_coords_start.append(coords[i + 1]) 
+        else: 
+            new_coords_end.append(coords[i + 1]) 
+
+        cumulative_distance += segment_length 
+
+    geometry_start_to_centroid = LineString(new_coords_start) 
+    geometry_centroid_to_end = LineString(new_coords_end) 
+
+    return geometry_start_to_centroid, geometry_centroid_to_end, point_on_line
+
+
 def _solve_edge(G: nx.MultiDiGraph, 
                 u: int, 
                 v: int, 
@@ -317,31 +377,28 @@ def _solve_edge(G: nx.MultiDiGraph,
     None
         Modifies `G` in-place.
     """
-    id_new_node = max(G.nodes()) + 1
-    new_node = G.nodes[u].copy()
-    G.add_node(id_new_node, **new_node)
-
     edge_info = G.get_edge_data(u, v, i)
+    id_new_node = max(G.nodes()) + 1
+    geometry_start_to_centroid, geometry_centroid_to_end, point_on_line = _split_geometry_at_centroid(
+        edge_info['geometry'] if 'geometry' in edge_info.keys() else _create_missing_geometry(G,u,v)
+    )
+    
+    G.add_node(id_new_node, 
+               **{'y': point_on_line.y, 'x': point_on_line.x})
+    
     new_info_u_new = {
-                "geometry": _create_missing_geometry(G, u, id_new_node),
-                "length": 0.0,
-                #"capacity": edge_info['capacity']
+                "geometry": geometry_start_to_centroid,
+                "length": geometry_start_to_centroid.length,
             }
+    
     G.add_edge(u,id_new_node,**new_info_u_new)
-
-    if "geometry" in edge_info:
-        geometry = edge_info['geometry']
-    else:
-        geometry = _create_missing_geometry(G, u, v)
             
     new_info_new_v = {
-                "geometry": geometry,
-                "length": edge_info['length'],
-                #"capacity": edge_info['capacity']
+                "geometry": geometry_centroid_to_end,
+                "length": geometry_centroid_to_end.length,
             }
     G.add_edge(id_new_node,v,**new_info_new_v)
     G.remove_edge(u, v, key=i)
-
 
 def _clean_edges(G: nx.MultiDiGraph) -> None:
     """
