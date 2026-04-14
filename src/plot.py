@@ -210,7 +210,7 @@ def plot_graph(gdf: gpd.GeoDataFrame,
     if title is not None:
         ax.set_title(title)
     
-    if source_target is not None:
+    if source_target:
         legend_elements = [
             Line2D(
                 [0], [0],

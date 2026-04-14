@@ -476,19 +476,21 @@ def _update_path_to_other_centroid(G: nx.MultiDiGraph,
         p_centroid = closest_to_centroids[cluster_p]
         path_pcentroid_p = _find_shortest_path(G, p_centroid, p_point)
         path_q_qcentroid = _find_shortest_path(G, q_point, q_centroid)
-        if path_pcentroid_p is not None and path_q_qcentroid is not None:
-            path_pcentroid_qcentroid = path_pcentroid_p[:-1] + [p_point, q_point] + path_q_qcentroid[1:]
-            new_edge_info1 = _unify_path(G = G, path = path_pcentroid_qcentroid)
 
-            G_new.add_edge(p_centroid, q_centroid, **new_edge_info1)
+        if path_pcentroid_p is not None and path_q_qcentroid is not None:
+            if G.has_edge(p_point, q_point):
+                path_pcentroid_qcentroid = path_pcentroid_p[:-1] + [p_point, q_point] + path_q_qcentroid[1:]
+                new_edge_info1 = _unify_path(G = G, path = path_pcentroid_qcentroid)
+                G_new.add_edge(p_centroid, q_centroid, **new_edge_info1)
 
         path_qcentroid_q = _find_shortest_path(G, q_centroid, q_point)
         path_p_pcentroid = _find_shortest_path(G, p_point, p_centroid)
         if path_qcentroid_q is not None and path_p_pcentroid is not None:
-            path_qcentroid_pcentroid = path_qcentroid_q[:-1] + [q_point, p_point] + path_p_pcentroid[1:]
-            new_edge_info2 = _unify_path(G = G, path = path_qcentroid_pcentroid)
+            if G.has_edge(q_point, p_point):
+                path_qcentroid_pcentroid = path_qcentroid_q[:-1] + [q_point, p_point] + path_p_pcentroid[1:]
+                new_edge_info2 = _unify_path(G = G, path = path_qcentroid_pcentroid)
 
-            G_new.add_edge(q_centroid, p_centroid, **new_edge_info2)
+                G_new.add_edge(q_centroid, p_centroid, **new_edge_info2)
 
 def _unify_clusters(G: nx.MultiDiGraph, 
                     hdbscan: HDBSCAN, 
@@ -551,9 +553,9 @@ def _unify_clusters(G: nx.MultiDiGraph,
             # Se eliminó
             if n_outside not in G_new.nodes():
                 _update_path_to_other_centroid(G = G, G_new = G_new, 
-                                                                     p_point = n_outside, q_centroid = closest_to_centroid, 
-                                                                     dict_node_cluster = dict_node_cluster, 
-                                                                     closest_to_centroids = closest_to_centroids)
+                                                p_point = n_outside, q_centroid = closest_to_centroid, 
+                                                dict_node_cluster = dict_node_cluster, 
+                                                closest_to_centroids = closest_to_centroids)
             else:
                 shortest1 = _find_shortest_path(G = G, s = closest_to_centroid, t = n_outside)
                 if shortest1 is not None:
